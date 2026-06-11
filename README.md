@@ -14,7 +14,7 @@
 > proven on a real VPS (agent up, de-privileged, replying on Slack via Codex).
 
 📺 **Watch the build, step by step:** [Hype or Ship on YouTube](https://www.youtube.com/@HypeorShip) &nbsp;·&nbsp;
-🌐 **Guides + the easy-start pack:** [hypership.com](https://HypeOrShip.com/Tutorials/base-Hermes)
+🌐 **Guides + the easy-start pack:** [HypeorShip.com](https://HypeorShip.com/Tutorials/base-Hermes)
 
 It sets up **one** personal [Hermes](https://github.com/NousResearch/hermes-agent)
 agent that **you** own and run — single-tenant, Slack-first. This is a **clean-room**
@@ -28,7 +28,7 @@ After one run, your VPS is running an agent that:
 - runs as a **de-privileged user** (never root), as a systemd service that survives reboot;
 - is reachable on **Slack** — it replies to everything in its own channel, no @mention;
 - thinks with **Codex** (your ChatGPT oAuth login) and falls back to **OpenRouter**;
-- has **persistent memory** (OpenViking) — it remembers across sessions with backup .mds to push to Obsidain (future video)
+- has **persistent memory** (OpenViking) — it remembers across sessions, with backup `.md` notes you can sync to Obsidian (a future video);
 - knows **who it is** (`SOUL.md`) and **who you are** (`USER.md`), set via a short interview;
 - backs its config up daily to a private GitHub repo (secrets scrubbed);
 - sits behind a **firewall + fail2ban**, with **Tailscale** ready for private access.
@@ -101,7 +101,23 @@ npm test                         # the denylist self-test
 shellcheck install.sh lib/*.sh   # lint
 ```
 
+## ⚠️ Use at your own risk — no warranty, no liability
+
+This is shared in the spirit of *"here's how I set things up"* — **not** as a guaranteed, audited product.
+By using it you accept that:
+
+- It's provided **as-is, with absolutely no warranty**, and the author takes **no responsibility and no
+  liability** for anything that happens as a result — data loss, downtime, security issues, surprise bills,
+  or anything else.
+- **You are responsible for your own setup.** Read the code, understand what each step does, and make your
+  own decision before you run it. I'm no security expert — **check the work yourself.**
+- Run it only on a **VPS/server you own and can rebuild**, with **throwaway credentials you can rotate**,
+  and **entirely at your own risk**.
+
+If that's not for you, that's completely fair — don't run it.
+
 ## Credits
 
 Built on [Hermes Agent](https://github.com/NousResearch/hermes-agent) (MIT) and
 [OpenViking](https://openviking.ai). See [docs/ROADMAP.md](docs/ROADMAP.md) for what's built.
+Licensed under the [MIT License](LICENSE) (which also disclaims warranty + liability).
