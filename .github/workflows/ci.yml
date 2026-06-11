@@ -134,7 +134,7 @@ jobs:
           sudo grep -q 'op://TestVault/OpenRouter/credential' "$f"
           sudo grep -q 'op://TestVault/OpenAI/credential'     "$f"
           sudo grep -q 'op://TestVault/Slack/allowed_user'    "$f"
-          sudo grep -q 'op://TestVault/Agent/name'            "$f"
+          sudo grep -q 'op://TestVault/Slack/home_channel'    "$f"
           # every non-comment, non-blank line must be an op:// reference (no real values)
           if sudo grep -vE '^[[:space:]]*(#|$)' "$f" | grep -qvE 'op://'; then
             echo "a config line is not an op:// reference"; exit 1
@@ -291,7 +291,6 @@ jobs:
           sudo grep -q 'provider: "openviking"' "$home/.hermes/config.yaml"
           sudo test -x "$home/.hermes/scripts/hermes-backup"
           sudo test -f /etc/systemd/system/hermes-backup.timer
-          # persona: avatar prompt generated (interview skipped in CI -> starters kept)
-          sudo test -f "$home/.hermes/avatar-prompt.txt"
-          sudo grep -q '512x512' "$home/.hermes/avatar-prompt.txt"
+          # persona: onboarding-first SOUL starter shipped (agent onboards in Slack, no install-time interview)
+          sudo grep -q 'ONBOARDING-PENDING' "$home/.hermes/USER.md"
           echo "install-e2e-test OK — the whole installer runs end-to-end on a fresh box"

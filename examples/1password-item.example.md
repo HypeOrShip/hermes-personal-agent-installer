@@ -21,14 +21,13 @@ references exactly these. **Values are yours** and never go in this repo.
 | ----------------------------- | ------------------------------------------- | ------------------------------------------ |
 | **OpenAI**                    | `credential`                                | `op://YOUR_VAULT/OpenAI/credential`        |
 | **OpenRouter**                | `credential`                                | `op://YOUR_VAULT/OpenRouter/credential`    |
-| **Agent**                     | `name`                                      | `op://YOUR_VAULT/Agent/name`               |
 | **Slack**                     | `bot_token`, `app_token`, `signing_secret`, `allowed_user`, `home_channel` | `op://YOUR_VAULT/Slack/bot_token` … |
 | **Tailscale**                 | `credential` (optional)                     | `op://YOUR_VAULT/Tailscale/credential`     |
 | **GitHub**                    | `backup_pat`, `backup_repo` (recommended)   | `op://YOUR_VAULT/GitHub/backup_pat`        |
 | **1Password Service Account** | `credential` (the read-only SA token)       | reference/recovery only                    |
 
 - Single-secret items (OpenAI, OpenRouter, Tailscale) use the **native `credential` field**.
-- **Agent** holds just the agent's `name`. **Slack** holds *everything Slack* — the three tokens plus your `allowed_user` (Slack member ID — only you can talk to it) and the agent's `home_channel`.
+- **Slack** holds *everything Slack* — the three tokens plus your `allowed_user` (Slack member ID — only you can talk to it) and the agent's `home_channel`. (Your agent's *name* isn't stored here — you give it one by talking to it in Slack; see the README.)
 - ⚠️ **Field names must match EXACTLY** — the installer verifies every reference up front and fails fast (naming the wrong field) rather than breaking halfway through.
 - **OpenAI** `credential` powers **memory (OpenViking) — required** + voice; **OpenRouter** is the model fallback.
 - **Codex** is the primary brain but logs in **interactively** at install time — **not** a field here.
