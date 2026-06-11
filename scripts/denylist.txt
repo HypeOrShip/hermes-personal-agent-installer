@@ -1,0 +1,27 @@
+# Clean-room denylist — extended regex (ERE), one pattern per line.
+# Scanned by scripts/check-denylist.sh; ANY match fails CI.
+# Rules:
+#   - Keep patterns generic CLASSES, never real values.
+#   - Lines starting with '#' and blank lines are ignored.
+#   - This file and check-denylist.sh are the only files excluded from the scan
+#     (they must hold the patterns). gitleaks still scans them.
+# Public-IPv4 and Slack-ID detection are handled specially in check-denylist.sh
+# (they need an allowlist / digit filter that a flat regex can't express).
+
+# --- Private on-box provisioning artifacts (clean-room: never reference the
+#     operator's hand-written box scripts or hardcoded privileged paths) ---
+provision_agent[A-Za-z_]*\.sh
+/root/\.hermes
+/home/agents
+
+# --- Secret-shaped tokens (a real one must never land in the repo) ---
+xox[baprs]-[A-Za-z0-9-]{10,}
+sk-or-v1-[A-Za-z0-9]{20,}
+sk-proj-[A-Za-z0-9_-]{20,}
+sk-[A-Za-z0-9]{32,}
+ops_eyJ[A-Za-z0-9._-]{20,}
+github_pat_[A-Za-z0-9_]{20,}
+ghp_[A-Za-z0-9]{20,}
+
+# --- Tailscale tailnet hostnames ---
+[A-Za-z0-9-]+\.ts\.net

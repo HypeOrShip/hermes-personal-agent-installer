@@ -1,0 +1,297 @@
+# CI gates.
+#  - compile-gate : runs the denylist self-test (scripts/test-denylist.sh via `npm test`).
+#  - clean-room   : explicit denylist scan of all tracked files (no operator identifiers leak).
+#  - secret-scan  : gitleaks (catches secret shapes the denylist's fixed patterns don't).
+#  - shellcheck + install-*-test : lint + install each slice on a throwaway Ubuntu runner.
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  compile-gate:
+    name: compile-gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm test --if-present   # the denylist self-test (scripts/test-denylist.sh)
+
+  clean-room:
+    name: clean-room
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      # Explicit, clearly-named gate: scan every tracked file for the operator's
+      # private identifiers / token shapes. Fails the build on any match.
+      - name: denylist scan
+        run: bash scripts/check-denylist.sh
+
+  secret-scan:
+    name: secret-scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      # Self-contained gitleaks (no external action / license needed). Scans the
+      # working tree against default rules + .gitleaks.toml allowlist for placeholders.
+      - name: gitleaks
+        env:
+          GITLEAKS_VERSION: 8.21.2
+        run: |
+          curl -sSL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+            | tar -xz gitleaks
+          ./gitleaks dir . --config .gitleaks.toml --no-banner --redact --exit-code 1
+          echo "gitleaks: no leaks found"
+
+  shellcheck:
+    name: shellcheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: shellcheck installer bash
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
+          shellcheck install.sh lib/*.sh
+
+  install-base-test:
+    name: install-base-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      # Real end-to-end test of the base slice on a throwaway Ubuntu runner — the
+      # cheap stand-in for the throwaway-VPS proof for system-level steps.
+      - name: dry-run must change nothing
+        run: |
+          sudo bash install.sh --user hermestest --steps base --dry-run
+          id hermestest 2>/dev/null && { echo "dry-run created a user — it must not"; exit 1; } || echo "dry-run clean"
+      - name: real base install
+        run: sudo bash install.sh --user hermestest --steps base
+      - name: assert user + layout + least privilege + idempotency
+        run: |
+          set -e
+          id hermestest
+          sudo passwd -S hermestest | awk '{print $2}' | grep -qx L || { echo "password not locked"; exit 1; }
+          if id -nG hermestest | tr ' ' '\n' | grep -qxE 'sudo|wheel|admin'; then echo "agent has escalation group"; exit 1; fi
+          home=$(getent passwd hermestest | cut -d: -f6)
+          test -d "$home/.hermes"; test -d "$home/.hermes/secrets"; test -d "$home/.config"
+          perm=$(stat -c '%a' "$home/.hermes/secrets"); [ "$perm" = "700" ] || { echo "secrets perm $perm != 700"; exit 1; }
+          owner=$(stat -c '%U' "$home/.hermes"); [ "$owner" = "hermestest" ] || { echo ".hermes owner $owner != hermestest"; exit 1; }
+          sudo bash install.sh --user hermestest --steps base   # re-run: must stay clean (idempotent)
+          echo "install-base-test OK"
+
+  install-harden-test:
+    name: install-harden-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      # Stage hardening on the runner (APPLY_NETWORK=0): install + rules + config,
+      # but never `ufw enable` / `tailscale up` (those would cut the runner).
+      - name: run hardening (staged)
+        run: sudo env APPLY_NETWORK=0 bash install.sh --steps harden
+      - name: assert tools installed, configs valid, switches NOT flipped
+        run: |
+          set -e
+          export PATH="$PATH:/usr/sbin:/sbin"
+          command -v ufw >/dev/null            || { echo "ufw not installed"; exit 1; }
+          command -v fail2ban-client >/dev/null || { echo "fail2ban not installed"; exit 1; }
+          command -v tailscale >/dev/null      || { echo "tailscale not installed"; exit 1; }
+          # firewall staged but NOT enabled (no lockout in CI)
+          sudo ufw status | head -1 | grep -qi inactive || { echo "ufw should be inactive (staged only)"; exit 1; }
+          # fail2ban jail written + config valid
+          test -f /etc/fail2ban/jail.d/hermes-sshd.local
+          sudo fail2ban-client -t
+          echo "install-harden-test OK"
+
+  install-secrets-test:
+    name: install-secrets-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      # No real OP_SERVICE_ACCOUNT_TOKEN -> the verify step skips; we still prove
+      # op installs and the one-item ref file renders correctly (refs only, 0600).
+      - name: base + secrets (no token -> verify skips)
+        run: sudo env OP_VAULT=TestVault bash install.sh --user hermestest --steps base,secrets
+      - name: assert op installed + refs rendered (0600, references only)
+        run: |
+          set -e
+          export PATH="$PATH:/usr/local/bin"
+          command -v op >/dev/null || { echo "op CLI not installed"; exit 1; }
+          home=$(getent passwd hermestest | cut -d: -f6)
+          f="$home/.hermes/op-secrets.env"
+          sudo test -f "$f"
+          perm=$(sudo stat -c '%a' "$f");  [ "$perm" = "600" ]        || { echo "perm $perm != 600"; exit 1; }
+          owner=$(sudo stat -c '%U' "$f"); [ "$owner" = "hermestest" ] || { echo "owner $owner != hermestest"; exit 1; }
+          sudo grep -q 'op://TestVault/Slack/bot_token'       "$f"
+          sudo grep -q 'op://TestVault/OpenRouter/credential' "$f"
+          sudo grep -q 'op://TestVault/OpenAI/credential'     "$f"
+          sudo grep -q 'op://TestVault/Slack/allowed_user'    "$f"
+          sudo grep -q 'op://TestVault/Agent/name'            "$f"
+          # every non-comment, non-blank line must be an op:// reference (no real values)
+          if sudo grep -vE '^[[:space:]]*(#|$)' "$f" | grep -qvE 'op://'; then
+            echo "a config line is not an op:// reference"; exit 1
+          fi
+          echo "install-secrets-test OK"
+
+  install-runtime-test:
+    name: install-runtime-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      # Actually clones upstream Hermes (MIT), builds the agent venv, pip-installs.
+      - name: base + runtime
+        run: sudo bash install.sh --user hermestest --steps base,runtime
+      - name: assert hermes runtime installed for the agent
+        run: |
+          set -e
+          home=$(getent passwd hermestest | cut -d: -f6)
+          sudo test -d "$home/.local/share/hermes-agent/.git"
+          sudo test -x "$home/.local/share/hermes-venv/bin/hermes"
+          sudo -u hermestest "$home/.local/share/hermes-venv/bin/python" -c "import hermes_cli; print('hermes_cli import OK')"
+          echo "install-runtime-test OK"
+
+  install-config-test:
+    name: install-config-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      # APPLY_NETWORK=0 → writes the files + service unit but does NOT start it.
+      - name: base + config (staged)
+        run: sudo env APPLY_NETWORK=0 OP_VAULT=TestVault bash install.sh --user hermestest --steps base,config
+      - name: assert config.yaml + SOUL/USER + service unit (not started)
+        run: |
+          set -e
+          home=$(getent passwd hermestest | cut -d: -f6)
+          sudo test -f "$home/.hermes/config.yaml"
+          sudo grep -q 'free_response_channels' "$home/.hermes/config.yaml"
+          sudo grep -q 'mode: "auto"'           "$home/.hermes/config.yaml"
+          sudo test -f "$home/.hermes/SOUL.md"
+          sudo test -f "$home/.hermes/USER.md"
+          sudo test -f /etc/systemd/system/hermes-agent.service
+          sudo grep -q 'gateway run' /etc/systemd/system/hermes-agent.service
+          sudo grep -q 'TimeoutStopSec' /etc/systemd/system/hermes-agent.service
+          sudo grep -q 'provider: "openviking"' "$home/.hermes/config.yaml"
+          if systemctl is-active --quiet hermes-agent.service; then echo "service must NOT be active (staged)"; exit 1; fi
+          echo "install-config-test OK"
+
+  install-openviking-test:
+    name: install-openviking-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      # Real: pip-installs OpenViking + writes the conf + service unit (staged, not started).
+      - name: base + openviking (staged)
+        run: sudo env APPLY_NETWORK=0 bash install.sh --user hermestest --steps base,openviking
+      - name: assert ov.conf + service unit + the openviking venv
+        run: |
+          set -e
+          home=$(getent passwd hermestest | cut -d: -f6)
+          sudo test -f "$home/.openviking/ov.conf"
+          sudo grep -q '"provider": "litellm"' "$home/.openviking/ov.conf"
+          sudo grep -q 'openai/gpt-4o-mini' "$home/.openviking/ov.conf"
+          sudo grep -q '127.0.0.1' "$home/.openviking/ov.conf"
+          sudo test -x "$home/.local/share/openviking-venv/bin/openviking-server"
+          sudo test -f /etc/systemd/system/openviking.service
+          sudo grep -q 'op run' /etc/systemd/system/openviking.service
+          if systemctl is-active --quiet openviking.service; then echo "must NOT be active (staged)"; exit 1; fi
+          echo "install-openviking-test OK"
+
+  install-codex-test:
+    name: install-codex-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      # The Codex login is interactive (CODEX_SKIP_LOGIN=1); test the config-rewrite.
+      - name: base + config + codex (login skipped, service not started)
+        run: sudo env APPLY_NETWORK=0 CODEX_SKIP_LOGIN=1 OP_VAULT=TestVault bash install.sh --user hermestest --steps base,config,codex
+      - name: assert config switched to Codex primary + OpenRouter fallback
+        run: |
+          set -e
+          home=$(getent passwd hermestest | cut -d: -f6)
+          f="$home/.hermes/config.yaml"
+          sudo grep -q 'provider: "openai-codex"' "$f"
+          sudo grep -q 'fallback_providers'        "$f"
+          sudo grep -q 'provider: "openrouter"'     "$f"
+          sudo grep -q 'free_response_channels'     "$f"
+          echo "install-codex-test OK"
+
+  install-backup-test:
+    name: install-backup-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - name: base + backup (staged; timer not enabled)
+        run: sudo env APPLY_NETWORK=0 bash install.sh --user hermestest --steps base,backup
+      - name: assert script + timer written, and the scrub aborts on a secret
+        run: |
+          set -e
+          home=$(getent passwd hermestest | cut -d: -f6)
+          sudo test -x "$home/.hermes/scripts/hermes-backup"
+          sudo test -f /etc/systemd/system/hermes-backup.service
+          sudo test -f /etc/systemd/system/hermes-backup.timer
+          if systemctl is-enabled --quiet hermes-backup.timer; then echo "timer must NOT be enabled (staged)"; exit 1; fi
+          # plant a bot-token-shaped string (literal split so it doesn't trip our denylist) -> scrub must abort
+          fake="xo""xb""-0123456789-abcdefghijkl"
+          echo "token: $fake" | sudo tee "$home/.hermes/config.yaml" >/dev/null
+          if sudo -u hermestest env HERMES_HOME="$home/.hermes" GITHUB_BACKUP_REPO=o/r GITHUB_BACKUP_PAT=x "$home/.hermes/scripts/hermes-backup" 2>&1 | grep -q ABORT; then
+            echo "scrub aborts on a secret ✓"
+          else echo "scrub did NOT abort on a planted secret"; exit 1; fi
+          echo "install-backup-test OK"
+
+  install-e2e-test:
+    name: install-e2e-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      # The whole installer, one command, end-to-end on a fresh box — staged
+      # (APPLY_NETWORK=0 / CODEX_SKIP_LOGIN=1 / no real token). The throwaway-VPS
+      # isolation proof, in CI.
+      - name: full install (--steps all)
+        run: sudo env APPLY_NETWORK=0 CODEX_SKIP_LOGIN=1 OP_VAULT=TestVault bash install.sh --user hermestest --steps all
+      - name: assert every component is present + the agent is de-privileged
+        run: |
+          set -e
+          export PATH="$PATH:/usr/local/bin:/usr/sbin:/sbin"
+          home=$(getent passwd hermestest | cut -d: -f6)
+          # base + least privilege
+          id hermestest
+          if id -nG hermestest | tr ' ' '\n' | grep -qxE 'sudo|wheel|admin'; then echo "agent can escalate"; exit 1; fi
+          # harden
+          command -v ufw >/dev/null && command -v fail2ban-client >/dev/null && command -v tailscale >/dev/null
+          # secrets
+          command -v op >/dev/null
+          sudo test -f "$home/.hermes/op-secrets.env"
+          # runtime
+          sudo test -d "$home/.local/share/hermes-agent/.git"
+          sudo -u hermestest "$home/.local/share/hermes-venv/bin/python" -c "import hermes_cli"
+          # config + codex
+          sudo grep -q 'provider: "openai-codex"' "$home/.hermes/config.yaml"
+          sudo grep -q 'free_response_channels'    "$home/.hermes/config.yaml"
+          sudo test -f "$home/.hermes/SOUL.md"; sudo test -f "$home/.hermes/USER.md"
+          # service + backup
+          sudo test -f /etc/systemd/system/hermes-agent.service
+          # memory: openviking installed + wired
+          sudo test -x "$home/.local/share/openviking-venv/bin/openviking-server"
+          sudo test -f "$home/.openviking/ov.conf"
+          sudo test -f /etc/systemd/system/openviking.service
+          sudo grep -q 'provider: "openviking"' "$home/.hermes/config.yaml"
+          sudo test -x "$home/.hermes/scripts/hermes-backup"
+          sudo test -f /etc/systemd/system/hermes-backup.timer
+          # persona: avatar prompt generated (interview skipped in CI -> starters kept)
+          sudo test -f "$home/.hermes/avatar-prompt.txt"
+          sudo grep -q '512x512' "$home/.hermes/avatar-prompt.txt"
+          echo "install-e2e-test OK — the whole installer runs end-to-end on a fresh box"

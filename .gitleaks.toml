@@ -1,0 +1,24 @@
+# gitleaks config for the Hermes Personal Agent Installer.
+# Extends gitleaks' default rules and allowlists the files that MUST contain
+# secret-shaped strings by design: the example/placeholder files (they teach the
+# shape with fake values) and the denylist's own pattern definitions.
+title = "hermes-personal-agent-installer"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "placeholders + the denylist's own token-shape patterns are not real secrets"
+paths = [
+  '''examples/.*''',
+  '''scripts/denylist\.txt''',
+  '''scripts/check-denylist\.sh''',
+  '''scripts/test-denylist\.sh''',
+]
+# Common placeholder tokens used throughout the docs/examples.
+regexes = [
+  '''REPLACE''',
+  '''YOUR_[A-Z_]+''',
+  '''xoxb-REPLACE''',
+  '''example\.com''',
+]
