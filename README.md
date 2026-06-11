@@ -87,7 +87,7 @@ Then post in your agent's Slack channel — it replies. That's it.
 - The **agent never runs as root** — the installer creates a locked-down user and refuses to grant it escalation.
 - **Secrets never touch the repo or disk.** They're stored in 1Password and resolved at runtime with `op run --env-file op-secrets.env -- …`; the only local secret is the read-only service-account token.
 - **Two service accounts:** a read-only one the agent uses, and (optionally) a write-scoped one for rotating tokens — kept apart. See [CONTEXT.md](CONTEXT.md).
-- **Clean-room + CI:** a denylist scanner + gitleaks fail the build on any operator identifier or secret shape. Details in [docs/SECURITY.md](docs/SECURITY.md).
+- **Clean-room + CI:** a denylist scanner + gitleaks fail the build on any operator identifier or secret shape.
 
 Run it only on a VPS or server you own and can rebuild
 
@@ -119,5 +119,5 @@ If that's not for you, that's completely fair — don't run it.
 ## Credits
 
 Built on [Hermes Agent](https://github.com/NousResearch/hermes-agent) (MIT) and
-[OpenViking](https://openviking.ai). See [docs/ROADMAP.md](docs/ROADMAP.md) for what's built.
+[OpenViking](https://openviking.ai).
 Licensed under the [MIT License](LICENSE) (which also disclaims warranty + liability).

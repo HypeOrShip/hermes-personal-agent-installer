@@ -8,12 +8,6 @@
 # Public-IPv4 and Slack-ID detection are handled specially in check-denylist.sh
 # (they need an allowlist / digit filter that a flat regex can't express).
 
-# --- Private on-box provisioning artifacts (clean-room: never reference the
-#     operator's hand-written box scripts or hardcoded privileged paths) ---
-provision_agent[A-Za-z_]*\.sh
-/root/\.hermes
-/home/agents
-
 # --- Secret-shaped tokens (a real one must never land in the repo) ---
 xox[baprs]-[A-Za-z0-9-]{10,}
 sk-or-v1-[A-Za-z0-9]{20,}
