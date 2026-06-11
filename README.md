@@ -29,7 +29,7 @@ After one run, your VPS is running an agent that:
 - is reachable on **Slack** — it replies to everything in its own channel, no @mention;
 - thinks with **Codex** (your ChatGPT oAuth login) and falls back to **OpenRouter**;
 - has **persistent memory** (OpenViking) — it remembers across sessions, with backup `.md` notes you can sync to Obsidian (a future video);
-- knows **who it is** (`SOUL.md`) and **who you are** (`USER.md`), set via a short interview;
+- knows **who it is** (`SOUL.md`) and **who you are** (`USER.md`) — it **interviews you in Slack** on first contact and writes both itself (or edit them yourself);
 - backs its config up daily to a private GitHub repo (secrets scrubbed);
 - sits behind a **firewall + fail2ban**, with **Tailscale** ready for private access.
 
@@ -52,6 +52,10 @@ You bring the accounts; the installer wires them together.
 
 1. **Create the Slack app** — paste [`examples/slack-app-manifest.json`](examples/slack-app-manifest.json)
    into *Create New App → From a manifest*, install it, and copy the bot/app tokens + signing secret.
+   > The manifest sets the bot's Slack name to **Hermes** (`display_information.name` + `bot_user.display_name`).
+   > If you already know what to call your agent, change both before creating the app — otherwise you can rename
+   > it any time at *api.slack.com/apps → your app → Basic Information*. (The agent picks the matching name when it
+   > onboards you in Slack.)
 2. **Fill your 1Password items** — one **API Credential** item per platform, following
    [`examples/1password-item.example.md`](examples/1password-item.example.md) (every field concealed makes sure you follow the names EXACTLY).
    Create a **read-only service account** scoped to that vault.
@@ -62,9 +66,12 @@ You bring the accounts; the installer wires them together.
    sudo env OP_SERVICE_ACCOUNT_TOKEN='ops_…' OP_VAULT='YourVault' bash install.sh --steps all
    ```
 4. **Complete the Codex login** when prompted (a ~30-second device-code flow).
-5. **Answer the persona interview** — name your agent, describe yourself; it writes `SOUL.md`/`USER.md` and hands you a ready-to-paste avatar prompt.
+5. **Say hi in your agent's Slack channel** — its first job is to interview you: it asks
+   who you are, what you want from it, and who it should be, then writes its own
+   `SOUL.md`/`USER.md`, gives you an avatar prompt, and tells you how to set its Slack
+   name + icon. No terminal editing, no markdown to fill in.
 
-Then post in your agent's Slack channel — it replies. That's it.
+That's it — it's yours from the first message.
 
 ## What the installer does 
 
@@ -76,10 +83,9 @@ Then post in your agent's Slack channel — it replies. That's it.
 | `secrets` | installs the 1Password CLI, renders `op://` references, **verifies every field up front in case you labelled incorrectly** |
 | `harden` | UFW firewall + fail2ban + Tailscale (auth key from 1Password) |
 | `runtime` | clones upstream Hermes (MIT) into an agent-owned venv |
-| `config` | writes `config.yaml` + starter `SOUL`/`USER` + the gateway systemd service |
+| `config` | writes `config.yaml` + the onboarding-first `SOUL`/`USER` starters + the gateway systemd service |
 | `codex` | the interactive Codex login → Codex-primary, OpenRouter fallback |
 | `openviking` | the memory server + wiring (built-in notes + the OpenViking provider) |
-| `persona` | the SOUL/USER interview + the Codex avatar prompt |
 | `backup` | a daily timer that pushes the editable config to GitHub (secrets scrubbed) |
 
 ## Security model

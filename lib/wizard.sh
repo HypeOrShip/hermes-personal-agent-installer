@@ -6,7 +6,7 @@
 
 # secrets BEFORE harden: harden's Tailscale step resolves its auth key from 1Password,
 # which needs `op` installed (the secrets step does that).
-WIZARD_STEPS=(base secrets harden runtime config codex openviking persona backup)
+WIZARD_STEPS=(base secrets harden runtime config codex openviking backup)
 
 wizard_preflight() {
   step "Preflight"
@@ -28,7 +28,8 @@ wizard_summary() {
     printf '    - Codex primary brain, OpenRouter fallback\n'
     printf '    - daily config backup to GitHub (secrets scrubbed)\n'
     printf '  Next:\n'
-    printf "    - edit  /home/%s/.hermes/SOUL.md ('who you are')  and  USER.md ('who I am')\n" "$user"
+    printf '    - say hi in your agent'"'"'s Slack channel — its first job is to interview you\n'
+    printf "      and write its own SOUL.md ('who you are') + USER.md ('who I am'). Edit them anytime.\n"
     printf '    - check it:  systemctl status hermes-agent   ·   logs:  journalctl -u hermes-agent -f\n'
   } >&2
 }

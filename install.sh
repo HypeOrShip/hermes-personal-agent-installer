@@ -54,8 +54,6 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$HERE/lib/backup.sh"
 # shellcheck source=lib/openviking.sh
 . "$HERE/lib/openviking.sh"
-# shellcheck source=lib/persona.sh
-. "$HERE/lib/persona.sh"
 # shellcheck source=lib/wizard.sh
 . "$HERE/lib/wizard.sh"
 
@@ -85,10 +83,9 @@ run_step() {
     config)  config_install "$AGENT_USER" ;;
     codex)   codex_install "$AGENT_USER" ;;
     openviking) openviking_install "$AGENT_USER" ;;
-    persona) persona_install "$AGENT_USER" ;;
     backup)  backup_install "$AGENT_USER" ;;
     all)     wizard_all "$AGENT_USER" ;;
-    *)       die "unknown step: '$1' (available: all, base, harden, secrets, runtime, config, codex, openviking, persona, backup)" ;;
+    *)       die "unknown step: '$1' (available: all, base, harden, secrets, runtime, config, codex, openviking, backup)" ;;
   esac
 }
 

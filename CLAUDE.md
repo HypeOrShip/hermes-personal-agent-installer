@@ -7,8 +7,9 @@ agent on a VPS the operator owns.
 - `install.sh` — entry point. `--steps <csv>` runs slices in order; `--steps all` runs the lot. `--dry-run` previews.
 - `lib/*.sh` — **one slice per file**: `base` (de-privileged user + layout), `harden` (UFW/fail2ban/Tailscale),
   `secrets` (1Password CLI + op:// references), `runtime` (Hermes), `config` (config.yaml + SOUL/USER + gateway
-  service), `codex` (the primary brain), `openviking` (persistent memory), `persona` (the SOUL/USER interview),
-  `backup` (daily GitHub push), `wizard` (the one-command orchestration). Plus `common.sh` helpers.
+  service — incl. the onboarding-first SOUL the agent rewrites from its Slack interview), `codex` (the primary
+  brain), `openviking` (persistent memory), `backup` (daily GitHub push), `wizard` (the one-command
+  orchestration). Plus `common.sh` helpers.
 - `examples/` — the 1Password item layout + an env example.
 - `docs/` — the security model + roadmap.
 - `scripts/` — the clean-room denylist scanner + its self-test.
