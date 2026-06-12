@@ -15,6 +15,7 @@ Reference material you copy from or hand to your agent — nothing here runs on 
 | File | What it's for |
 |---|---|
 | [`SETUP-CHECKLIST.md`](SETUP-CHECKLIST.md) | The whole setup as a tickable checklist, in the right order — tools → 1Password → Slack → install. Start here. |
+| [`agent-install-runbook.md`](agent-install-runbook.md) | Don't want to run the box-side commands yourself? Hand this to Codex / Claude Code and it drives the install for you. |
 | `1password-item.example.md` | The exact 1Password item + field names the installer expects. |
 | `installer.env.example` | Template for the install-time environment. |
 | `slack-app-manifest.json` | Drop-in manifest to create the Slack app. |

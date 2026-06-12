@@ -51,7 +51,8 @@ You bring the accounts; the installer wires them together.
 ## Setup (the whole surface)
 
 > Prefer a tick-as-you-go list? **[`examples/SETUP-CHECKLIST.md`](examples/SETUP-CHECKLIST.md)** has every step below
-> in order, with checkboxes.
+> in order, with checkboxes. Or hand the box-side install to your own AI agent with
+> **[`examples/agent-install-runbook.md`](examples/agent-install-runbook.md)**.
 
 1. **Create the Slack app** — paste [`examples/slack-app-manifest.json`](examples/slack-app-manifest.json)
    into *Create New App → From a manifest*, install it, and copy the bot/app tokens + signing secret.
