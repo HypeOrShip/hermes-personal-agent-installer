@@ -15,7 +15,7 @@ cloning, running the installer, and pausing for the handful of things only a hum
 
 ## Before you start (≈10 min, you)
 1. **Slack app** created (paste the manifest) + bot/app tokens + signing secret copied; your member ID + a channel ID.
-2. **1Password items** filled (exact field names) + a **read-only service account** → its token (`ops_…`) + the vault name.
+2. **1Password items** filled (exact field names) + a **read-only service account** and a **write-only service account**  → its token (`ops_…`) + the vault name a
 3. Have ready the only box access the agent needs: the **server IP + root password**, plus your
    **`OP_SERVICE_ACCOUNT_TOKEN`** and **`OP_VAULT`**.
 
