@@ -17,6 +17,10 @@ Set these up first so the rest goes cleanly.
       - [ ] `op vault list` (confirm vault access)
 - [ ] **Open the 1Password app** and create your **empty item shells now** (exact field names below) — so you
       just paste each value in as you collect it.
+- [ ] **Read-only service account** — scoped to your vault (**read-only**) → copy its token (`ops_…`).
+      This is your `OP_SERVICE_ACCOUNT_TOKEN`; the vault name is `OP_VAULT`. **This is the only secret the agent ever holds.**
+- [ ] *(optional, advanced)* A separate **write-scoped** SA on its own vault, for future token rotation — not used
+      by the V1 installer. Skip it unless you know you want it. See [CONTEXT.md](../CONTEXT.md).
 
 Handy tabs to open now (you'll fill these across Phases 2–4):
 - 1Password service accounts — https://my.1password.com/developer-tools/infrastructure-secrets/serviceaccount
@@ -64,15 +68,7 @@ comes from the app manifest in Phase 3.)*
 
 ---
 
-## Phase 4 — Finish 1Password (the service account)
-- [ ] **Read-only service account** — scoped to your vault (**read-only**) → copy its token (`ops_…`).
-      This is your `OP_SERVICE_ACCOUNT_TOKEN`; the vault name is `OP_VAULT`. **This is the only secret the agent ever holds.**
-- [ ] *(optional, advanced)* A separate **write-scoped** SA on its own vault, for future token rotation — not used
-      by the V1 installer. Skip it unless you know you want it. See [CONTEXT.md](../CONTEXT.md).
-
----
-
-## Phase 5 — The host (one command)
+## Phase 4 — The host (one command)
 - [ ] *(only if you've SSH'd to this IP before — e.g. a re-imaged box)* clear the stale host key:
       `ssh-keygen -R <your-ip>`
 - [ ] `ssh root@<your-ip>`
